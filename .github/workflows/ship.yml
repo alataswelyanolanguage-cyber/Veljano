@@ -17,7 +17,7 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}":/home/user/hostcwd \
-            kivy/buildozer:latest \
+            kivy/buildozer:1.5.0 \
             android debug
 
       - name: Show APK outputs
@@ -38,8 +38,8 @@ jobs:
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: shipit-${{ github.run_number }}
-          name: Build #${{ github.run_number }}
+          tag_name: build-${{ github.run_number }}
+          name: Veljano Build #${{ github.run_number }}
           files: bin/*.apk
           generate_release_notes: true
           fail_on_unmatched_files: false
