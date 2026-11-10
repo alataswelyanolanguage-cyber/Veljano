@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
-const nodemailer = require('nodemailer'); // Подключаем почту
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -13,23 +13,24 @@ app.use(express.json());
 const JWT_SECRET = "super_secret_game_key_123";
 const DB_FILE = path.join(__dirname, 'database.json');
 
-// --- НАСТРОЙКА ПОЧТЫ (ВСТАВЬТЕ СВОИ ДАННЫЕ) ---
+// --- НАСТРОЙКА ПОЧТЫ ---
+// ВАЖНО: Если не хотите настраивать почту, закомментируйте блок ниже,
+// иначе сервер может падать при регистрации.
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Если Яндекс, напишите 'yandex'
+    service: 'gmail',
     auth: {
-        user: 'ВАША_ПОЧТА@gmail.com', // Сюда вставьте почту бота
-        pass: 'ВАШ_ПАРОЛЬ_ПРИЛОЖЕНИЯ' // Сюда вставьте 16-значный код (без пробелов!)
+        user: 'ВАША_ПОЧТА@gmail.com', 
+        pass: 'ВАШ_ПАРОЛЬ_ПРИЛОЖЕНИЯ' 
     }
 });
 
-// Функция для отправки письма
 async function sendEmail(to, subject, text) {
     try {
         await transporter.sendMail({
-            from: '"Сервер игры" <ВАША_ПОЧТА@gmail.com>', // От кого
-            to: to, // Кому
-            subject: subject, // Тема
-            text: text // Текст письма
+            from: '"Сервер игры" <ВАША_ПОЧТА@gmail.com>',
+            to: to,
+            subject: subject,
+            text: text
         });
         console.log(`Письмо успешно отправлено на ${to}`);
     } catch (error) {
@@ -58,14 +59,18 @@ function authenticateToken(req, res, next) {
 }
 
 // ==========================================
-// 1. АККАУНТЫ (С ОТПРАВКОЙ ПИСЕМ)
+// 1. АККАУНТЫ (ИСПРАВЛЕНЫ ПУТИ И ПОЛЯ)
 // ==========================================
 
-app.post('/api/register', async (req, res) => {
+app.post('/register', async (req, res) => {
     try {
-        const { email, password, name } = req.body;
+        // Принимаем name, nick или username (что пришлёт клиент)
+        const { email, password } = req.body;
+        const name = req.body.name || req.body.nick || req.body.username;
 
-        if (!email || !password || !name) return res.status(400).json({ error: "Заполните все поля" });
+        if (!email || !password || !name) {
+            return res.status(400).json({ error: "Заполните все поля (имя, почта, пароль)" });
+        }
 
         const existingUser = db.users.find(u => u.email === email);
         if (existingUser) return res.status(400).json({ error: "Этот email уже занят" });
@@ -78,16 +83,17 @@ app.post('/api/register', async (req, res) => {
         db.users.push(newUser);
         saveDB(); 
 
-        // Отправляем письмо после успешной регистрации
+        // Отправляем письмо (если почта настроена)
         sendEmail(email, "Успешная регистрация", `Привет, ${name}! Твой аккаунт на сервере Veljano успешно создан.`);
 
-        res.json({ success: true, message: "Аккаунт создан!" });
+        res.json({ success: true, message: "Аккаунт создан!", user: { id: newUser.id, name: newUser.name, email: newUser.email } });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Ошибка сервера" });
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = db.users.find(u => u.email === email);
@@ -98,11 +104,11 @@ app.post('/api/login', async (req, res) => {
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
-        // Пример: Отправляем письмо о входе в аккаунт (опционально, можно убрать)
         sendEmail(email, "Вход в аккаунт", `Вы только что вошли в свой аккаунт ${user.name}.`);
 
         res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email } });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "Ошибка сервера" });
     }
 });
@@ -111,14 +117,14 @@ app.post('/api/login', async (req, res) => {
 // 2. ПРОФИЛИ И ПОИСК
 // ==========================================
 
-app.get('/api/profile', authenticateToken, (req, res) => {
+app.get('/profile', authenticateToken, (req, res) => {
     const user = db.users.find(u => u.id === req.userId);
     if (!user) return res.status(404).json({ error: "Пользователь не найден" });
     const { passwordHash, ...safeUser } = user;
     res.json(safeUser);
 });
 
-app.get('/api/search', (req, res) => {
+app.get('/search', (req, res) => {
     const searchName = req.query.name;
     if (!searchName) return res.status(400).json({ error: "Укажите ник" });
 
@@ -129,7 +135,7 @@ app.get('/api/search', (req, res) => {
     res.json(players);
 });
 
-app.get('/api/player/:id', (req, res) => {
+app.get('/player/:id', (req, res) => {
     const player = db.users.find(u => u.id === req.params.id);
     if (!player) return res.status(404).json({ error: "Игрок не найден" });
     res.json({ id: player.id, name: player.name, level: player.level });
@@ -139,7 +145,7 @@ app.get('/api/player/:id', (req, res) => {
 // 3. ЧАТ
 // ==========================================
 
-app.post('/api/chat', authenticateToken, (req, res) => {
+app.post('/chat', authenticateToken, (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: "Пустое сообщение" });
 
@@ -153,7 +159,7 @@ app.post('/api/chat', authenticateToken, (req, res) => {
     res.json({ success: true });
 });
 
-app.get('/api/chat', (req, res) => {
+app.get('/chat', (req, res) => {
     res.json(db.messages);
 });
 
