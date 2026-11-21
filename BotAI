@@ -1,6 +1,9 @@
-телеграм, тг, telegram | Открываю Телеграм | tg://resolve
-ютуб, youtube | Запускаю Ютуб | https://www.youtube.com
-вк, вконтакте, vk | Открываю ВКонтакте | https://vk.com
-браузер, гугл, поиск | Открываю браузер | https://www.google.com
-настройки | Открываю настройки | android.settings.SETTINGS
-вайфай, wi-fi | Открываю настройки Вай-Фай | android.settings.WIFI_SETTINGS
+телеграм, тг, telegram | Выполняю | tg://resolve
+ютуб, youtube | Выполняю | https://www.youtube.com
+вотсап, ватсап, whatsapp | Выполняю | whatsapp://send
+макс, max | Выполняю | max://
+вк, вконтакте, vk | Выполняю | https://vk.com
+браузер, гугл, поиск | Выполняю | https://www.google.com
+настройки | Выполняю | android.settings.SETTINGS
+вайфай, wi-fi | Выполняю | android.settings.WIFI_SETTINGS
+впн, vpn, типтоп, tiptop | Выполняю | package:com.free.tiptop.vpn.proxy
